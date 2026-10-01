@@ -27,6 +27,18 @@ lottery-nas/
 
 ## 一、部署到 NAS
 
+### 方式 0.5：飞牛 NAS（fnOS）
+
+1. GitHub 仓库页面 → **Code → Download ZIP**，解压到 NAS 任意文件夹（例如 `/vol1/1000/docker/lottery`）。
+2. 打开飞牛 **Docker → Compose 项目 → 新建项目**：
+   - 项目名称：`lottery-analysis`
+   - 路径：选择刚才的解压目录（该目录内已含 `docker-compose.yml`）
+   - 内容：选择「使用已有文件」或粘贴下方 docker-compose.yml
+3. 保存并启动：飞牛自动拉取基础镜像、构建、运行。
+4. 浏览器访问 `http://NAS的IP:8056`。
+
+> 有终端权限也可一条命令：`git clone https://github.com/tanzurong/lottery-analysislottery-analysis.git && cd lottery-analysislottery-analysis && docker compose up -d --build`
+
 ### 方式 0：图形界面直接拉取（最简单，无需 SSH / 命令行）
 
 如果你的 NAS 是**群晖**（Container Manager）或装了 **Portainer**，直接在网页界面填 Git 地址即可自动拉取、构建、启动：
