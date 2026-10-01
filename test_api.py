@@ -8,6 +8,7 @@ import tempfile
 
 tmp = tempfile.mkdtemp(prefix="lottery_test_")
 os.environ["DATA_DIR"] = tmp
+os.environ["AUTO_SYNC"] = "0"  # 测试时不启动定时任务/首次网络同步
 
 import app as APP  # noqa: E402
 

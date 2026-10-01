@@ -12,7 +12,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 
-COPY app.py db.py analysis.py demo_data.py ./
+COPY app.py db.py analysis.py demo_data.py fetcher.py sync.py scheduler.py ./
 COPY static ./static
 
 # 数据目录：docker-compose 挂载卷持久化
@@ -20,5 +20,5 @@ RUN mkdir -p /app/data
 
 EXPOSE 8000
 
-# 首次启动自动初始化演示数据（见 app.py __main__ / wsgi 初始化）
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "-w", "2", "--timeout", "60", "app:app"]
+# 单 worker：定时任务由主进程调度，避免多 worker 重复执行
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "-w", "1", "--timeout", "120", "app:app"]

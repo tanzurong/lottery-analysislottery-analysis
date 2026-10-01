@@ -8,6 +8,8 @@ from flask import Flask, jsonify, request, send_from_directory
 
 import analysis
 import db
+import fetcher  # noqa: F401（保持导入，便于排查）
+import sync
 from demo_data import DEMO_RAW, parse_raw
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -163,13 +165,41 @@ def api_check_picks():
     return jsonify({"ok": True, "checked": checked_any, "summary": summary})
 
 
+@app.get("/api/sync/status")
+def api_sync_status():
+    return jsonify(sync.sync_status())
+
+
+@app.post("/api/sync")
+def api_sync():
+    try:
+        result = sync.sync_now()
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"ok": False, "msg": f"同步失败：{exc}"}), 502
+
+
 def _win_param():
     return request.args.get("win", type=int) or 0
 
 
+def _start_background():
+    """启动定时任务与首次同步（AUTO_SYNC=0 可关闭，便于测试）。"""
+    if os.environ.get("AUTO_SYNC", "1") == "0":
+        return
+    from scheduler import start_scheduler
+    start_scheduler()
+
+
+# 模块级初始化：gunicorn 直接 import 时也会执行（首次启动写入演示数据）
+db.init_db()
+if db.record_count() == 0:
+    db.upsert_records(parse_raw(DEMO_RAW), demo=True)
+
+# 每日自动同步开奖数据 + 自动核对推荐（可用环境变量 AUTO_SYNC=0 关闭）
+_start_background()
+
+
 if __name__ == "__main__":
-    db.init_db()
-    if db.record_count() == 0:
-        db.upsert_records(parse_raw(DEMO_RAW), demo=True)
     port = int(os.environ.get("PORT", "8000"))
     app.run(host="0.0.0.0", port=port, debug=False)

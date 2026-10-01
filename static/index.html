@@ -357,6 +357,14 @@ const dataLayer = {
     }
     savePicksLocal(picks);
     return {ok:true,checked,summary:picks.filter(p=>p.checked&&p.checked.won!==undefined).map(p=>({id:p.id,draw_period:p.checked.draw_period, won:p.checked.results.some(r=>r.won)}))};
+  },
+  async syncStatus(){
+    if(!state.online) return {auto:false, online:false, last_sync:"离线模式", last_sync_period:"", last_sync_date:"", source:"", total:0, real_total:0};
+    return apiFetch("/api/sync/status");
+  },
+  async syncNow(){
+    if(!state.online) throw new Error("离线模式不支持网络同步，请连接后端服务");
+    return apiFetch("/api/sync",{method:"POST"});
   }
 };
 
@@ -399,8 +407,11 @@ function viewHome(){
   </div>`;
 }
 async function loadHome(){
-  const [ov, sm] = await Promise.all([dataLayer.overview(state.win), dataLayer.sums(state.win)]);
-  $("#homeSub").textContent = `共 ${ov.total} 期数据（窗口：近 ${ov.win} 期）· 数据来源：${ov.latest && ov.latest.demo ? "内置演示数据" : "本地导入数据"}`;
+  const [ov, sm, st] = await Promise.all([dataLayer.overview(state.win), dataLayer.sums(state.win), dataLayer.syncStatus().catch(()=>null)]);
+  const hasReal = st && st.real_total > 0;
+  $("#homeSub").textContent = hasReal
+    ? `共 ${ov.total} 期数据（窗口：近 ${ov.win} 期）· 网络自动更新 · 最新期 ${st.last_sync_period}（${st.last_sync_date||"—"}）`
+    : `共 ${ov.total} 期数据（窗口：近 ${ov.win} 期）· 数据来源：内置演示数据（已开启网络自动更新，联网后自动拉取真实开奖）`;
   $("#homeStats").innerHTML = `
     <div class="stat-card"><div class="label">累计期数</div><div class="value">${ov.total}</div><div class="sub">本地已存历史</div></div>
     <div class="stat-card"><div class="label">近20期和值均值</div><div class="value" style="color:var(--amber)">${ov.avg_sum_20}</div><div class="sub">红球和值区间 21–183</div></div>
@@ -410,10 +421,10 @@ async function loadHome(){
   if(ov.latest){ const l=ov.latest;
     $("#homeLatest").innerHTML = `<b>${esc(l.period)}</b><div style="margin-top:10px">${ballsHTML(l.red,l.blue)}</div><div class="muted" style="margin-top:10px">红球和值 ${sumOf(l)} · 奇偶比 ${oddCount(l)}:${6-oddCount(l)} · 大小比 ${bigCount(l)}:${6-bigCount(l)}</div>`;
   } else $("#homeLatest").innerHTML = "暂无数据，请先导入开奖数据。";
-  const st = await dataLayer.stats(state.win);
+  const stt = await dataLayer.stats(state.win);
   const topN = (arr,n,rev)=>arr.map((v,i)=>({n:i+1,v})).sort((a,b)=>rev?b.v-a.v:a.v-b.v).slice(0,n);
-  $("#homeHot").innerHTML = topN(st.freq_red,5,true).map(x=>`<span class="mini-ball red">${String(x.n).padStart(2,"0")}</span><b class="muted" style="margin-right:6px">×${x.v}</b>`).join("");
-  $("#homeCold").innerHTML = topN(st.miss_red,5,true).map(x=>`<span class="mini-ball blue">${String(x.n).padStart(2,"0")}</span><b class="muted" style="margin-right:6px">${x.v}期</b>`).join("");
+  $("#homeHot").innerHTML = topN(stt.freq_red,5,true).map(x=>`<span class="mini-ball red">${String(x.n).padStart(2,"0")}</span><b class="muted" style="margin-right:6px">×${x.v}</b>`).join("");
+  $("#homeCold").innerHTML = topN(stt.miss_red,5,true).map(x=>`<span class="mini-ball blue">${String(x.n).padStart(2,"0")}</span><b class="muted" style="margin-right:6px">${x.v}期</b>`).join("");
   if(window.echarts) drawSumChart("homeSum", sm);
 }
 
@@ -422,6 +433,18 @@ function viewData(){
   <div class="page-head">
     <div><h1>数据</h1><p>粘贴文本或选择本地文件导入开奖历史；${state.online?"数据保存在 NAS 服务器数据库（SQLite）":"离线模式下保存在浏览器本地"}</p>${modeTag()}</div>
     <div class="seg" id="winSeg">${[30,50,100,0].map(w=>`<button data-w="${w}" class="${state.win===w?"active":""}">${w===0?"全部":w+"期"}</button>`).join("")}</div>
+  </div>
+  <div class="panel" style="margin-bottom:16px">
+    <h3><span class="dot green"></span>网络自动更新</h3>
+    <div class="row" style="margin-bottom:8px">
+      <span class="pill green" id="syncTag">每日自动</span>
+      <span class="muted" id="syncInfo">加载中…</span>
+    </div>
+    <p class="muted" style="margin-bottom:12px">每天 10:00 自动从福彩官网拉取最新开奖数据，并在拉取后自动核对「我的推荐」中奖情况，无需手动导入。</p>
+    <div class="btn-row">
+      <button class="btn blue" id="btnSync">立即从网络更新</button>
+    </div>
+    <div id="syncMsg" style="margin-top:10px"></div>
   </div>
   <div class="grid g-2">
     <div class="panel">
@@ -456,9 +479,15 @@ function viewData(){
   </div>`;
 }
 async function loadData(){
-  const h = await dataLayer.history(state.win);
+  const [h, st] = await Promise.all([dataLayer.history(state.win), dataLayer.syncStatus().catch(()=>null)]);
   $("#dataTotal").textContent = `当前 ${h.total} 期`;
   $("#dataWin").textContent = `窗口 ${h.win} 期`;
+  if(st){
+    const tag = $("#syncTag");
+    tag.textContent = st.real_total>0 ? "每日自动 · 已联网" : "每日自动 · 待首次同步";
+    tag.className = st.real_total>0 ? "pill green" : "pill warm";
+    $("#syncInfo").textContent = `上次同步 ${st.last_sync} · 最新期 ${st.last_sync_period||"—"}（${st.last_sync_date||"—"}）· 来源 ${st.source||"—"}`;
+  }
   $("#historyBody").innerHTML = h.rows.map(d=>`
     <tr><td>${esc(d.period)}</td>
     <td>${d.red.map(n=>`<span class="mini-ball red">${String(n).padStart(2,"0")}</span>`).join("")}</td>
@@ -585,8 +614,8 @@ function viewPick(){
     <div class="panel">
       <h3><span class="dot green"></span>我的推荐 · 中奖核对</h3>
       <div class="row" style="margin-bottom:12px">
-        <button class="btn ghost" id="btnCheck">核对中奖</button>
-        <span class="muted">自动用「保存后最早的一期开奖」核对每组命中</span>
+        <button class="btn ghost" id="btnCheck">立即核对</button>
+        <span class="muted">每日 10:00 自动核对（用保存后最早的一期开奖），也可点此手动核对</span>
       </div>
       <div id="picksList"><p class="muted">加载中…</p></div>
     </div>
@@ -692,6 +721,19 @@ function bindEvents(){
   });
   $("#btnReset")?.addEventListener("click",async()=>{ await dataLayer.reset(); toast("已重置为内置演示数据"); render(); });
   $("#btnClear")?.addEventListener("click",async()=>{ await dataLayer.clear(); toast("已清空开奖数据"); render(); });
+  $("#btnSync")?.addEventListener("click",async()=>{
+    const btn=$("#btnSync"), msg=$("#syncMsg");
+    btn.disabled=true; btn.textContent="同步中…";
+    try{
+      const r = await dataLayer.syncNow();
+      msg.className = r.ok ? "import-ok" : "import-err";
+      msg.textContent = r.ok
+        ? `同步完成：新增 ${r.added} 期，最新期 ${r.latest_period}（${r.latest_date||"—"}）${r.history_loaded ? "，已拉取历史开奖数据" : ""}；本次自动核对推荐 ${r.checked} 条。`
+        : (r.msg || "同步失败");
+      loadData();
+    }catch(e){ msg.className="import-err"; msg.textContent = "同步失败：" + e.message; }
+    btn.disabled=false; btn.textContent="立即从网络更新";
+  });
   $$(".strategy-card").forEach(c=>c.addEventListener("click",()=>{ state.strategy=c.dataset.str; $$(".strategy-card").forEach(x=>x.classList.toggle("selected",x===c)); }));
   $$("#countSeg button").forEach(b=>b.addEventListener("click",()=>{ state.count=Number(b.dataset.c); $$("#countSeg button").forEach(x=>x.classList.toggle("active",x===b)); }));
   $("#btnGen")?.addEventListener("click",doGenerate);

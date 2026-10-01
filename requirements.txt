@@ -1,2 +1,4 @@
 flask>=3.0,<4
 gunicorn>=21.2
+requests>=2.31
+apscheduler>=3.10,<4

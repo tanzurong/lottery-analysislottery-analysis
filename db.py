@@ -35,8 +35,47 @@ def init_db():
             checked TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
+        CREATE TABLE IF NOT EXISTS meta (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        );
         """
     )
+    conn.commit()
+    conn.close()
+
+
+# ---------- 元信息 ----------
+def set_meta(key, value):
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES(?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (key, str(value)),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_meta(key, default=""):
+    conn = get_conn()
+    row = conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+    conn.close()
+    return row["value"] if row else default
+
+
+def count_real():
+    """非演示（网络同步/导入）数据条数。"""
+    conn = get_conn()
+    n = conn.execute("SELECT COUNT(*) c FROM records WHERE demo=0").fetchone()["c"]
+    conn.close()
+    return n
+
+
+def delete_demo():
+    """删除全部演示数据（网络同步成功后调用，保证统计窗口纯真实）。"""
+    conn = get_conn()
+    conn.execute("DELETE FROM records WHERE demo=1")
     conn.commit()
     conn.close()
 
