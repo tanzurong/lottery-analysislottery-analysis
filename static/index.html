@@ -29,7 +29,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--font-sans);font-siz
 .nav-item svg{width:18px;height:18px;flex:0 0 18px;opacity:.85}
 .nav-item:hover{background:rgba(255,255,255,.05);color:var(--txt)}
 .nav-item.active{background:linear-gradient(90deg,rgba(229,72,77,.16),rgba(62,139,255,.16));color:var(--txt);box-shadow:inset 3px 0 0 var(--red)}
-.main{flex:1;min-width:0;padding:28px 34px 60px;max-width:1240px}
+.main{flex:1;min-width:0;padding:28px 34px 60px}
 .view{display:none}
 .view.active{display:block;animation:fade .25s ease}
 @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -742,6 +742,14 @@ async function boot(){
   try{ const r=await fetch("/api/overview"); if(r.ok){ state.online=true; } else state.online=false; }
   catch(e){ state.online=false; }
   window.addEventListener("hashchange", render);
+  // 窗口尺寸变化时，让图表跟随容器重新适配（铺满屏幕场景）
+  window.addEventListener("resize", ()=>{
+    if(!window.echarts) return;
+    document.querySelectorAll("div[id]").forEach(el=>{
+      const c = window.echarts.getInstanceByDom(el);
+      if(c) c.resize();
+    });
+  });
   await render();
   loadECharts();
 }
