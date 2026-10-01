@@ -27,6 +27,13 @@ lottery-nas/
 
 ## 一、部署到 NAS
 
+### 方式 0：图形界面直接拉取（最简单，无需 SSH / 命令行）
+
+如果你的 NAS 是**群晖**（Container Manager）或装了 **Portainer**，直接在网页界面填 Git 地址即可自动拉取、构建、启动：
+
+- **群晖**：打开 Container Manager → 项目 → 新增 → 名称填 `lottery-analysis`，来源选 **Git 仓库**，粘贴 `https://github.com/tanzurong/lottery-analysislottery-analysis.git`，确认 `docker-compose.yml` 路径后创建。
+- **Portainer**：Stacks → Add stack → 填 Git 仓库地址 → Deploy。
+
 ### 方式 1：Docker Compose（推荐，支持群晖 Container Manager / 威联通 / 任何 Linux NAS）
 
 1. 把整个 `lottery-nas/` 目录拷贝到 NAS（例如 `docker/lottery-nas/`）。
