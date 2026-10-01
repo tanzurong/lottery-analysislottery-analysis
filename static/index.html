@@ -716,18 +716,27 @@ function toast(msg){
   clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.opacity="0"; },3000);
 }
 function loadECharts(){
-  const urls=[
-    "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js",
-    "https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"
-  ];
-  (function tryLoad(i){
-    if(i>=urls.length || window.echarts) return;
-    const sc=document.createElement("script");
-    sc.src=urls[i];
-    sc.onload=()=>{ render(); };
-    sc.onerror=()=>{ tryLoad(i+1); };
-    document.head.appendChild(sc);
-  })(0);
+  if(window.echarts) return;
+  // 优先加载本地 echarts.min.js（随应用部署，NAS 内网无外网依赖）
+  const local = document.createElement("script");
+  local.src = "echarts.min.js";
+  local.onload = () => { render(); };
+  local.onerror = () => {
+    // 回退：外部 CDN（jsDelivr → cdnjs）
+    const urls = [
+      "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"
+    ];
+    (function tryLoad(i){
+      if(i>=urls.length || window.echarts) return;
+      const sc=document.createElement("script");
+      sc.src=urls[i];
+      sc.onload=()=>{ render(); };
+      sc.onerror=()=>{ tryLoad(i+1); };
+      document.head.appendChild(sc);
+    })(0);
+  };
+  document.head.appendChild(local);
 }
 async function boot(){
   try{ const r=await fetch("/api/overview"); if(r.ok){ state.online=true; } else state.online=false; }

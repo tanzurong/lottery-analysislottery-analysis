@@ -31,6 +31,12 @@ def index():
     return send_from_directory(STATIC_DIR, "index.html")
 
 
+@app.get("/<path:filename>")
+def static_files(filename):
+    """托管 static/ 目录下的静态资源（echarts.min.js 等，本地化不依赖外网 CDN）。"""
+    return send_from_directory(STATIC_DIR, filename)
+
+
 # ---------- 基础数据 ----------
 @app.get("/api/overview")
 def api_overview():
