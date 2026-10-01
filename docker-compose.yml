@@ -1,9 +1,14 @@
 # 双色球娱乐分析工作台 —— Docker Compose
 # 部署：docker compose up -d --build
 # 访问：http://NAS_IP:8056
+# 国内 NAS 拉取 Docker Hub 镜像超时时，把 PY_BASE 换成可用的镜像加速源，
+# 例如 docker.m.daocloud.io / docker.1ms.run / docker.xuanyuan.me（见 README）
 services:
   lottery:
-    build: .
+    build:
+      context: .
+      args:
+        PY_BASE: docker.m.daocloud.io/library/python:3.11-slim
     image: lottery-analysis:latest
     container_name: lottery-analysis
     ports:

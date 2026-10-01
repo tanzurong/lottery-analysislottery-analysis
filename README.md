@@ -104,6 +104,15 @@ python app.py        # 默认 8000 端口，可用 PORT 环境变量修改
 
 ## 五、常见问题
 
+- **构建时拉取基础镜像超时**（`registry-1.docker.io ... Timeout`）：国内网络直连 Docker Hub 不稳定。本仓库已默认在 `docker-compose.yml` 中通过 `PY_BASE` 走镜像加速源 `docker.m.daocloud.io`；若该源不可用，把它替换为以下任一可用源即可：
+  ```
+  docker.1ms.run
+  docker.xuanyuan.me
+  hub.rat.dev
+  docker.m.daocloud.io
+  ```
+  替换位置：`docker-compose.yml` 中 `build.args.PY_BASE` 的 `docker.m.daocloud.io/library/python:3.11-slim`（换前缀，保留 `/library/python:3.11-slim` 部分）。也可在飞牛/群晖的 Docker 设置里添加镜像加速器，全局生效。
+- **pip 安装慢**：Dockerfile 已默认使用阿里云 PyPI 镜像（`mirrors.aliyun.com`）。
 - **端口冲突**：8056 被占用时修改 compose 里 `ports` 左侧端口，如 `8057:8000`。
 - **数据丢失**：确认 `./data` 卷挂载正常；备份该目录即可迁移。
 - **页面显示「离线演示」**：说明浏览器没连上后端（仅离线预览模式，功能受浏览器存储限制）；部署成功后刷新即显示「后端在线」。
