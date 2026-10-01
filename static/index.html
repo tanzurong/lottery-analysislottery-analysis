@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双色球娱乐分析工作台</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='26' cy='38' r='20' fill='%23E5484D'/%3E%3Ccircle cx='40' cy='22' r='14' fill='%233E8BFF'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+:root{
+  --bg:#0B1626; --bg2:#0D1B2D; --panel:#12263D; --panel2:#172F4B; --line:#1E3A5F;
+  --txt:#E6EEF7; --txt2:#93A7C0; --txt3:#5F7796;
+  --red:#E5484D; --red-d:#B93236; --blue:#3E8BFF; --blue-d:#2A66C2;
+  --amber:#F0A94A; --green:#34C26B; --danger:#E5484D;
+  --font-sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --font-mono:"SF Mono","Cascadia Code",Consolas,"Courier New",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:var(--font-sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+::selection{background:rgba(62,139,255,.35)}
+.app{display:flex;min-height:100vh}
+.side{width:224px;flex:0 0 224px;background:var(--bg2);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:18px 14px;gap:4px;z-index:20}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 16px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.brand .logo{width:36px;height:36px;flex:0 0 36px}
+.brand b{font-size:16px;font-weight:900;letter-spacing:.5px}
+.brand small{display:block;color:var(--txt3);font-size:11px;font-weight:400}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--txt2);cursor:pointer;text-decoration:none;font-weight:500;transition:background .15s,color .15s}
+.nav-item svg{width:18px;height:18px;flex:0 0 18px;opacity:.85}
+.nav-item:hover{background:rgba(255,255,255,.05);color:var(--txt)}
+.nav-item.active{background:linear-gradient(90deg,rgba(229,72,77,.16),rgba(62,139,255,.16));color:var(--txt);box-shadow:inset 3px 0 0 var(--red)}
+.main{flex:1;min-width:0;padding:28px 34px 60px;max-width:1240px}
+.view{display:none}
+.view.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.banner{display:flex;gap:10px;align-items:flex-start;background:rgba(240,169,74,.1);border:1px solid rgba(240,169,74,.35);color:#F7C87E;padding:12px 16px;border-radius:12px;margin-bottom:22px;font-size:13px;line-height:1.7}
+.banner svg{width:18px;height:18px;flex:0 0 18px;margin-top:2px}
+.mode-tag{display:inline-flex;align-items:center;gap:6px;margin-left:12px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700}
+.mode-tag.online{background:rgba(52,194,107,.14);border:1px solid rgba(52,194,107,.4);color:#7FE0A8}
+.mode-tag.offline{background:rgba(240,169,74,.12);border:1px solid rgba(240,169,74,.35);color:#F7C87E}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.page-head h1{font-size:24px;font-weight:900;letter-spacing:.5px}
+.page-head p{color:var(--txt2);font-size:13px;margin-top:4px}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--txt2);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:var(--font-sans);font-size:13px;font-weight:500;transition:all .15s}
+.seg button.active{background:var(--panel2);color:var(--txt);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.grid{display:grid;gap:16px}
+.g-stats{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:16px}
+.g-2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.panel h3{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.panel h3 .dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex:0 0 8px}
+.panel h3 .dot.blue{background:var(--blue)}
+.panel h3 .dot.amber{background:var(--amber)}
+.panel h3 .dot.green{background:var(--green)}
+.stat-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.stat-card .label{color:var(--txt2);font-size:12px}
+.stat-card .value{font-size:28px;font-weight:900;font-family:var(--font-mono);margin-top:6px;letter-spacing:.5px}
+.stat-card .sub{color:var(--txt3);font-size:12px;margin-top:4px}
+.balls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ball{width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:700;font-size:16px;color:#fff;flex:0 0 38px}
+.ball.red{background:radial-gradient(circle at 32% 30%,#FF7B7E,var(--red) 55%,var(--red-d));box-shadow:0 3px 10px rgba(229,72,77,.35)}
+.ball.blue{background:radial-gradient(circle at 32% 30%,#6FB2FF,var(--blue) 55%,var(--blue-d));box-shadow:0 3px 10px rgba(62,139,255,.35)}
+.ball.sm{width:30px;height:30px;font-size:13px;flex-basis:30px}
+.mini-ball{display:inline-flex;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:700;color:#fff;margin-right:4px}
+.mini-ball.red{background:var(--red)}
+.mini-ball.blue{background:var(--blue)}
+.mini-ball.gray{background:#3E5A7D}
+.btn{border:0;border-radius:10px;padding:9px 18px;font-family:var(--font-sans);font-size:14px;font-weight:700;cursor:pointer;transition:filter .15s,transform .05s;color:#fff}
+.btn:active{transform:scale(.98)}
+.btn.red{background:linear-gradient(135deg,var(--red),var(--red-d))}
+.btn.blue{background:linear-gradient(135deg,var(--blue),var(--blue-d))}
+.btn.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--txt2)}
+.btn.ghost:hover{color:var(--txt)}
+.btn:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.mini{padding:6px 12px;font-size:12.5px}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+textarea.imp{width:100%;min-height:150px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;color:var(--txt);font-family:var(--font-mono);font-size:12.5px;padding:12px;resize:vertical;line-height:1.7}
+textarea.imp:focus{outline:none;border-color:var(--blue)}
+table.list{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px}
+table.list th{color:var(--txt3);font-weight:500;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px}
+table.list td{padding:8px 10px;border-bottom:1px solid rgba(30,58,95,.55);font-family:var(--font-mono)}
+table.list tr:hover td{background:rgba(62,139,255,.05)}
+.tbl-wrap{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.tbl-wrap::-webkit-scrollbar{width:8px;height:8px}
+.tbl-wrap::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.pill{display:inline-flex;align-items:center;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700}
+.pill.hot{background:rgba(229,72,77,.16);color:#FF8B8E;border:1px solid rgba(229,72,77,.4)}
+.pill.cold{background:rgba(62,139,255,.14);color:#7FB8FF;border:1px solid rgba(62,139,255,.4)}
+.pill.warm{background:rgba(240,169,74,.13);color:#F7C87E;border:1px solid rgba(240,169,74,.35)}
+.pill.green{background:rgba(52,194,107,.13);border:1px solid rgba(52,194,107,.4);color:#7FE0A8}
+.pill.gray{background:rgba(95,119,150,.15);border:1px solid rgba(95,119,150,.4);color:#93A7C0}
+.pill.lv1{background:rgba(229,72,77,.2);border:1px solid var(--red);color:#FF9B9E}
+.chart-box{height:320px;width:100%}
+.chart-box.tall{height:360px}
+.chart-box.short{height:240px}
+.freq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px}
+.freq-cell{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center;position:relative;overflow:hidden}
+.freq-cell .n{font-family:var(--font-mono);font-weight:700;font-size:15px}
+.freq-cell .c{font-family:var(--font-mono);font-size:11px;color:var(--txt3)}
+.freq-cell .bar-bg{position:absolute;left:0;bottom:0;height:3px;border-radius:0 0 8px 8px}
+.pick-item{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.pick-item .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--txt3);font-size:12px;margin-top:10px}
+.pick-item .meta b{color:var(--txt2);font-weight:600}
+.strategy-card{cursor:pointer;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel);transition:border-color .15s,box-shadow .15s}
+.strategy-card:hover{border-color:var(--line)}
+.strategy-card.selected{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset,0 6px 18px rgba(62,139,255,.15)}
+.strategy-card h4{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.strategy-card p{color:var(--txt2);font-size:12px;margin-top:6px;line-height:1.7}
+.strategy-card .tag{margin-left:auto;font-size:11px;color:var(--txt3);font-family:var(--font-mono)}
+.import-ok{color:var(--green);font-size:13px}
+.import-err{color:#FF8B8E;font-size:13px}
+.quick-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.quick-link{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;text-decoration:none;color:var(--txt);transition:transform .15s,border-color .15s}
+.quick-link:hover{transform:translateY(-2px);border-color:var(--blue)}
+.quick-link svg{width:20px;height:20px;color:var(--blue)}
+.quick-link.red svg{color:var(--red)}
+.muted{color:var(--txt3);font-size:12px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+code{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-family:var(--font-mono);font-size:12px;color:#AFC5E2}
+/* 我的推荐 */
+.check-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel)}
+.check-row .hit{font-family:var(--font-mono);font-size:12px;color:var(--txt2)}
+.check-row .prize{font-family:var(--font-mono);font-size:12px;font-weight:700}
+@media (max-width:920px){
+  .app{flex-direction:column}
+  .side{width:100%;flex:0 0 auto;height:auto;position:static;flex-direction:row;overflow-x:auto;padding:10px 12px;gap:6px;border-right:0;border-bottom:1px solid var(--line)}
+  .brand{display:none}
+  .nav-item{flex:0 0 auto;padding:8px 12px;font-size:13px;min-height:44px;min-width:44px}
+  .nav-item span{display:none}
+  .nav-item.active{box-shadow:inset 0 -3px 0 var(--red)}
+  .main{padding:20px 16px 48px}
+  .grid.g-2{grid-template-columns:1fr}
+  .chart-box{height:280px}
+  .seg button{min-height:42px}
+  .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  body{font-size:15px}
+  textarea.imp,input{font-size:16px}
+}
+@media (max-width:480px){
+  .g-stats{grid-template-columns:repeat(2,1fr)}
+  .page-head h1{font-size:20px}
+  .ball{width:32px;height:32px;font-size:14px;flex-basis:32px}
+  .ball.sm{width:26px;height:26px;font-size:11px;flex-basis:26px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><circle cx="26" cy="40" r="19" fill="#E5484D"/><circle cx="41" cy="22" r="14" fill="#3E8BFF"/></svg>
+      <div><b>开奖工作台</b><small>双色球 · 娱乐分析</small></div>
+    </div>
+    <a class="nav-item active" href="#/home" data-view="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/></svg><span>概览</span></a>
+    <a class="nav-item" href="#/data" data-view="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg><span>数据</span></a>
+    <a class="nav-item" href="#/stat" data-view="stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span>统计</span></a>
+    <a class="nav-item" href="#/chart" data-view="chart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8M3 21h18"/></svg><span>走势</span></a>
+    <a class="nav-item" href="#/pick" data-view="pick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg><span>推荐</span></a>
+  </nav>
+  <main class="main" id="main"></main>
+</div>
+<script>
+"use strict";
+/* =====================================================
+   全局工具
+   ===================================================== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const RED_MAX = 33, BLUE_MAX = 16;
+const STRATEGIES = {
+  hot:{name:"热号加权", desc:"按窗口出现频次做权重（频次越高越易被选中），适合观察「近期活跃号」的分布模拟。"},
+  cold:{name:"冷号加权", desc:"按当前遗漏值做权重（遗漏越久越易被选中），适合观察「长期未出号」的回补模拟。"},
+  mix:{name:"均衡组合", desc:"热冷各半 + 奇偶 3:3 附近 + 大小均衡 + 和值 60–140 约束，模拟「机选套餐」风格。"}
+};
+const PRIZE_TABLE = [
+  [6,1,"一等奖",null],[6,0,"二等奖",null],[5,1,"三等奖",3000],[5,0,"四等奖",200],
+  [4,1,"四等奖",200],[4,0,"五等奖",10],[3,1,"五等奖",10],[2,1,"六等奖",5],
+  [1,1,"六等奖",5],[0,1,"六等奖",5]
+];
+let state = { view:"home", win:100, strategy:"hot", count:5, online:null };
+
+/* =====================================================
+   离线数据引擎（API 不可用时回退；逻辑与后端一致）
+   ===================================================== */
+const LS_DATA = "ssq_data_v1", LS_PICKS = "ssq_picks_v1";
+const DEMO_RAW = [
+"2025050|02 07 13 18 24 31|05","2025049|03 09 14 22 27 32|12","2025048|01 06 11 19 26 30|09",
+"2025047|04 08 15 21 25 29|02","2025046|05 10 16 20 23 33|14","2025045|02 12 17 24 28 31|07",
+"2025044|03 07 18 22 26 30|11","2025043|01 09 13 19 27 32|04","2025042|06 11 14 23 25 33|16",
+"2025041|02 04 10 17 29 31|08","2025040|03 08 12 21 26 28|06","2025039|05 09 16 20 24 30|13",
+"2025038|01 07 15 22 27 33|03","2025037|04 06 13 19 25 32|10","2025036|02 10 14 18 23 31|15",
+"2025035|03 11 17 21 26 29|01","2025034|01 05 12 20 28 30|07","2025033|06 09 15 22 24 33|12",
+"2025032|02 08 13 19 27 31|05","2025031|03 07 16 20 25 32|14","2025030|04 10 11 18 26 29|09",
+"2025029|01 06 14 21 23 30|02","2025028|05 09 17 22 28 33|11","2025027|02 12 15 19 24 31|06",
+"2025026|03 08 18 20 27 32|13","2025025|01 07 11 16 25 29|08","2025024|04 06 13 23 26 30|15",
+"2025023|02 10 17 21 28 33|03","2025022|03 05 12 19 24 31|10","2025021|01 09 14 20 27 32|16",
+"2025020|06 11 15 22 25 30|04","2025019|02 07 16 18 23 29|12","2025018|03 08 13 21 26 33|07",
+"2025017|01 04 10 19 28 31|09","2025016|05 12 17 20 24 32|02","2025015|02 09 11 18 27 30|14",
+"2025014|03 06 15 22 25 33|05","2025013|01 08 16 23 26 29|11","2025012|04 07 13 19 24 31|08",
+"2025011|02 10 14 20 28 32|16","2025010|03 11 17 21 27 30|06","2025009|01 05 12 18 25 33|13",
+"2025008|06 09 15 22 26 31|03","2025007|02 08 16 20 23 29|10","2025006|03 07 13 19 28 32|15",
+"2025005|01 04 10 21 24 30|07","2025004|05 11 14 17 25 33|12","2025003|02 06 18 22 27 31|09",
+"2025002|03 09 15 20 26 30|04","2025001|01 07 12 19 23 32|16",
+"2024149|02 08 13 18 24 31|05","2024148|03 06 14 21 27 33|12","2024147|01 05 11 20 25 30|09",
+"2024146|04 09 15 19 23 28|02","2024145|05 07 16 22 26 32|14","2024144|02 12 17 23 25 31|07",
+"2024143|03 08 18 21 24 33|11","2024142|01 06 13 19 27 32|04","2024141|04 10 14 22 28 30|16",
+"2024140|02 07 11 17 26 31|08"
+];
+function parseRaw(lines){
+  const list = [];
+  for(const line of lines){
+    const t = line.replace(/^\s+|\s+$/g,"");
+    if(!t || t.startsWith("#")) continue;
+    const parts = t.split(/[|,;\t ]+/).filter(Boolean);
+    if(parts.length < 8) continue;
+    const nums = parts.slice(-7).map(Number);
+    if(nums.some(n=>!Number.isInteger(n))) continue;
+    const red = nums.slice(0,6).sort((a,b)=>a-b);
+    const blue = nums[6];
+    if(red.length!==6 || new Set(red).size!==6 || red.some(n=>n<1||n>33)) continue;
+    if(blue<1||blue>16) continue;
+    list.push({period:String(parts[0]), red, blue, demo:false});
+  }
+  list.sort((a,b)=>String(b.period).localeCompare(String(a.period)));
+  return list;
+}
+function loadLocal(){ try{ const r=localStorage.getItem(LS_DATA); if(r) return JSON.parse(r); }catch(e){} return parseRaw(DEMO_RAW).map(r=>({...r,demo:true})); }
+function saveLocal(list){ localStorage.setItem(LS_DATA, JSON.stringify(list)); }
+function windowOf(list, n){ if(!n || n>=list.length) return list; return list.slice(0,n); }
+function freqOf(list, max, blue){ const f=new Array(max+1).fill(0); for(const d of list){ if(blue) f[d.blue]++; else d.red.forEach(r=>f[r]++); } return f; }
+function missOf(list, max, blue){ const m=new Array(max+1).fill(0); if(!list.length) return m; for(let i=1;i<=max;i++){ let f=list.findIndex(d=>blue?d.blue===i:d.red.includes(i)); m[i]=f===-1?list.length:f; } return m; }
+const sumOf = d => d.red.reduce((a,b)=>a+b,0);
+const oddCount = d => d.red.filter(n=>n%2===1).length;
+const bigCount = d => d.red.filter(n=>n>=17).length;
+function weightedPick(pool, w){ const t=w.reduce((a,b)=>a+b,0); if(t<=0) return null; let r=Math.random()*t; for(let i=0;i<pool.length;i++){ r-=w[i]; if(r<0) return pool[i]; } return pool[pool.length-1]; }
+function pickMany(weight,k){ const pool=[...Array(RED_MAX)].map((_,i)=>i+1); const w=[...Array(RED_MAX)].map((_,i)=>weight[i+1]); const out=[]; while(out.length<k&&pool.length){ const t=w.reduce((a,b)=>a+b,0); let r=Math.random()*t, idx=0; for(let i=0;i<pool.length;i++){ r-=w[i]; if(r<0){idx=i;break;} } if(idx>=pool.length) idx=pool.length-1; out.push(pool[idx]); pool.splice(idx,1); w.splice(idx,1);} return out; }
+function pickMix(weight){ const red=[]; const all=[...Array(RED_MAX)].map((_,i)=>i+1); for(let k=0;k<6;k++){ let c=all.filter(n=>!red.includes(n)); if(k===5){ const o=red.filter(n=>n%2).length, b=red.filter(n=>n>=17).length; c=c.filter(n=>Math.abs((o+n%2)-3)<=1 && Math.abs((b+(n>=17))-3)<=1); } if(!c.length) return null; const p=weightedPick(c,c.map(n=>weight[n])); if(p==null) return null; red.push(p); } const s=red.reduce((a,b)=>a+b,0); return s<60||s>140?null:red; }
+function localRecommend(list, win, strategy, count){
+  const w=windowOf(list,win);
+  const f=freqOf(w,RED_MAX), m=missOf(w,RED_MAX);
+  const weight=[...Array(RED_MAX+1)].fill(1);
+  if(strategy==="hot"){ for(let i=1;i<=RED_MAX;i++) weight[i]=Math.pow(f[i],1.4)+1; }
+  if(strategy==="cold"){ for(let i=1;i<=RED_MAX;i++) weight[i]=m[i]+1; }
+  if(strategy==="mix"){ const thHot=Math.max(2,Math.round(w.length*6/RED_MAX*1.6)); const thCold=Math.max(3,Math.round(w.length/2)); for(let i=1;i<=RED_MAX;i++){ if(f[i]>=thHot) weight[i]=4; else if(m[i]>=thCold) weight[i]=3; else weight[i]=1; } }
+  const fb=freqOf(w,BLUE_MAX,true);
+  const sets=[]; let guard=0;
+  while(sets.length<count && guard++<count*80){
+    let red = strategy==="mix" ? pickMix(weight) : pickMany(weight,6);
+    if(!red || red.length<6) continue;
+    red.sort((a,b)=>a-b);
+    const blue=weightedPick([...Array(BLUE_MAX)].map((_,i)=>i+1),[...Array(BLUE_MAX)].map((_,i)=>fb[i+1]+1))||Math.floor(Math.random()*BLUE_MAX)+1;
+    sets.push({red,blue});
+  }
+  return sets;
+}
+function localCheckOne(red, blue, dr, db){ const hit=red.filter(n=>dr.includes(n)).length; const bh=blue===db; for(const [r,b,lv,p] of PRIZE_TABLE){ if(hit===r&&bh===b) return {hit_red:hit,hit_blue:bh,level:lv,prize:p,won:true}; } return {hit_red:hit,hit_blue:bh,level:null,prize:0,won:false}; }
+function localFindDrawAfter(list, base){ const cand=list.filter(r=>r.period>base); if(!cand.length) return null; return cand.reduce((a,b)=>a.period<b.period?a:b); }
+</script>
+<script>
+"use strict";
+/* =====================================================
+   dataLayer：在线（后端 API）/ 离线（浏览器本地）双通道
+   ===================================================== */
+async function apiFetch(path, opts){
+  const res = await fetch(path, opts);
+  if(!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+function localId(){ return Date.now(); }
+function loadPicksLocal(){ try{ return JSON.parse(localStorage.getItem(LS_PICKS))||[]; }catch(e){ return []; } }
+function savePicksLocal(list){ localStorage.setItem(LS_PICKS, JSON.stringify(list)); }
+
+const dataLayer = {
+  async overview(win){
+    if(state.online) return apiFetch(`/api/overview?win=${win}`);
+    const list = loadLocal(), w = windowOf(list, win);
+    const fR=freqOf(w,RED_MAX), fB=freqOf(w,BLUE_MAX,true), mR=missOf(w,RED_MAX), mB=missOf(w,BLUE_MAX,true);
+    const sums=list.slice(0,20).map(sumOf);
+    const hotR=fR.indexOf(Math.max(...fR.slice(1))), hotB=fB.indexOf(Math.max(...fB.slice(1)));
+    return { total:list.length, win:w.length, avg_sum_20: sums.length?Math.round(sums.reduce((a,b)=>a+b,0)/sums.length):0,
+      hot_red:hotR, hot_red_freq:fR[hotR], hot_blue:hotB, hot_blue_freq:fB[hotB],
+      max_miss:Math.max(...mR.slice(1),...mB.slice(1)), latest:list[0]||null };
+  },
+  async history(win){
+    if(state.online) return apiFetch(`/api/history?win=${win}&limit=200`);
+    const list=windowOf(loadLocal(),win);
+    return { total:loadLocal().length, win:list.length, rows:list.map(r=>({period:r.period,red:r.red,blue:r.blue,sum:sumOf(r),odd:`${oddCount(r)}:${6-oddCount(r)}`,big:`${bigCount(r)}:${6-bigCount(r)}`,demo:r.demo})) };
+  },
+  async importText(text){
+    if(state.online){ const j=await apiFetch("/api/import",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})}); return j; }
+    const parsed=parseRaw(text.split(/\r?\n/));
+    if(!parsed.length) return {ok:false,msg:"未解析到有效数据：每行格式为「期号 红1…红6 蓝」。"};
+    const cur=loadLocal(); const map=new Map(cur.map(d=>[d.period,d]));
+    let dup=0; parsed.forEach(d=>{ if(map.has(d.period)) dup++; else map.set(d.period,{...d,demo:false}); });
+    const merged=[...map.values()].sort((a,b)=>String(b.period).localeCompare(String(a.period)));
+    saveLocal(merged);
+    return {ok:true,added:parsed.length-dup,total:merged.length,msg:`导入成功 ${parsed.length-dup} 条，当前共 ${merged.length} 期。`};
+  },
+  async reset(){
+    if(state.online) return apiFetch("/api/reset",{method:"POST"});
+    saveLocal(parseRaw(DEMO_RAW).map(r=>({...r,demo:true})));
+    return {ok:true,msg:"已重置为内置演示数据。"};
+  },
+  async clear(){
+    if(state.online) return apiFetch("/api/clear",{method:"POST"});
+    saveLocal([]);
+    return {ok:true,msg:"已清空全部开奖数据。"};
+  },
+  async stats(win){
+    if(state.online) return apiFetch(`/api/stats?win=${win}`);
+    const w=windowOf(loadLocal(),win);
+    return { win:w.length, freq_red:freqOf(w,RED_MAX).slice(1), freq_blue:freqOf(w,BLUE_MAX,true).slice(1),
+      miss_red:missOf(w,RED_MAX).slice(1), miss_blue:missOf(w,BLUE_MAX,true).slice(1) };
+  },
+  async sums(win){
+    if(state.online) return apiFetch(`/api/sums?win=${win}`);
+    const w=windowOf(loadLocal(),win);
+    const rev=[...w].reverse();
+    const series=rev.map(r=>({period:r.period,sum:sumOf(r)}));
+    const avg=series.length?Math.round(series.reduce((a,b)=>a+b.sum,0)/series.length):0;
+    return {win:w.length,avg,series};
+  },
+  async recommend(strategy, count, win){
+    if(state.online) return apiFetch("/api/recommend",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({strategy,count,win})});
+    return {sets:localRecommend(loadLocal(),win,strategy,count),strategy};
+  },
+  async addPick(strategy, base_period, sets){
+    if(state.online) return apiFetch("/api/picks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({strategy,base_period,sets})});
+    const list=loadPicksLocal();
+    const pick={id:localId(),strategy,base_period,sets,checked:null,created_at:new Date().toLocaleString("zh-CN",{hour12:false})};
+    list.unshift(pick); savePicksLocal(list);
+    return {ok:true,id:pick.id};
+  },
+  async listPicks(){
+    if(state.online) return (await apiFetch("/api/picks")).picks;
+    return loadPicksLocal();
+  },
+  async deletePick(id){
+    if(state.online) return apiFetch(`/api/picks/${id}`,{method:"DELETE"});
+    savePicksLocal(loadPicksLocal().filter(p=>p.id!==id));
+    return {ok:true};
+  },
+  async checkPicks(){
+    if(state.online) return apiFetch("/api/picks/check",{method:"POST"});
+    const list=loadLocal(), picks=loadPicksLocal();
+    let checked=0;
+    for(const p of picks){
+      if(p.checked) continue;
+      const draw=localFindDrawAfter(list,p.base_period);
+      if(!draw) continue;
+      p.checked={draw_period:draw.period,draw,results:p.sets.map(s=>localCheckOne(s.red,s.blue,draw.red,draw.blue))};
+      checked++;
+    }
+    savePicksLocal(picks);
+    return {ok:true,checked,summary:picks.filter(p=>p.checked&&p.checked.won!==undefined).map(p=>({id:p.id,draw_period:p.checked.draw_period, won:p.checked.results.some(r=>r.won)}))};
+  }
+};
+
+/* =====================================================
+   视图渲染（骨架 → 异步填充）
+   ===================================================== */
+const bannerHTML = `
+<div class="banner">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+  <div><b>重要声明：</b>双色球每期开奖均为<strong>独立随机事件</strong>，任何历史统计与号码生成均<strong>不构成中奖预测</strong>。本工具仅用于数据学习与娱乐参考，不提供任何购彩建议，请理性娱乐。</div>
+</div>`;
+const modeTag = () => `<span class="mode-tag ${state.online?"online":"offline"}">${state.online?"后端在线 · 数据存服务器":"离线演示 · 数据存浏览器"}</span>`;
+function ballsHTML(red, blue, sm){ return `<span class="balls">${red.map(n=>`<span class="ball red${sm?" sm":""}">${String(n).padStart(2,"0")}</span>`).join("")}<span class="ball blue${sm?" sm":""}">${String(blue).padStart(2,"0")}</span></span>`; }
+function levelPill(level, prize){
+  if(!level) return `<span class="pill gray">未中奖</span>`;
+  const cls = level==="一等奖"?"lv1":(level==="二等奖"?"hot":"green");
+  const p = prize?` · 奖金 ${prize} 元`:"（浮动奖金）";
+  return `<span class="pill ${cls}">${level}${p}</span>`;
+}
+
+function viewHome(){
+  return `${bannerHTML}
+  <div class="page-head">
+    <div><h1>概览</h1><p id="homeSub">加载中…</p>${modeTag()}</div>
+  </div>
+  <div class="grid g-stats" id="homeStats"></div>
+  <div class="grid g-2">
+    <div class="panel"><h3><span class="dot"></span>最新一期</h3><div id="homeLatest" class="muted">加载中…</div></div>
+    <div class="panel"><h3><span class="dot blue"></span>窗口热号 Top5（红球）</h3><div id="homeHot" class="muted">加载中…</div>
+      <h3 style="margin-top:18px"><span class="dot amber"></span>当前遗漏 Top5（红球）</h3><div id="homeCold" class="muted">加载中…</div></div>
+  </div>
+  <div class="panel" style="margin-top:16px">
+    <h3><span class="dot"></span>近 20 期红球和值走势</h3><div id="homeSum" class="chart-box short"></div>
+  </div>
+  <div class="quick-links" style="margin-top:16px">
+    <a class="quick-link red" href="#/pick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>生成并保存推荐</a>
+    <a class="quick-link" href="#/stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>查看冷热与遗漏</a>
+    <a class="quick-link" href="#/chart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8M3 21h18"/></svg>查看走势图</a>
+    <a class="quick-link" href="#/data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>导入开奖数据</a>
+  </div>`;
+}
+async function loadHome(){
+  const [ov, sm] = await Promise.all([dataLayer.overview(state.win), dataLayer.sums(state.win)]);
+  $("#homeSub").textContent = `共 ${ov.total} 期数据（窗口：近 ${ov.win} 期）· 数据来源：${ov.latest && ov.latest.demo ? "内置演示数据" : "本地导入数据"}`;
+  $("#homeStats").innerHTML = `
+    <div class="stat-card"><div class="label">累计期数</div><div class="value">${ov.total}</div><div class="sub">本地已存历史</div></div>
+    <div class="stat-card"><div class="label">近20期和值均值</div><div class="value" style="color:var(--amber)">${ov.avg_sum_20}</div><div class="sub">红球和值区间 21–183</div></div>
+    <div class="stat-card"><div class="label">窗口最热红球</div><div class="value" style="color:var(--red)">${String(ov.hot_red).padStart(2,"0")}</div><div class="sub">${ov.hot_red_freq} 次 / ${ov.win} 期</div></div>
+    <div class="stat-card"><div class="label">窗口最热蓝球</div><div class="value" style="color:var(--blue)">${String(ov.hot_blue).padStart(2,"0")}</div><div class="sub">${ov.hot_blue_freq} 次 / ${ov.win} 期</div></div>
+    <div class="stat-card"><div class="label">当前最大遗漏</div><div class="value" style="color:var(--amber)">${ov.max_miss}</div><div class="sub">期内未开出期数</div></div>`;
+  if(ov.latest){ const l=ov.latest;
+    $("#homeLatest").innerHTML = `<b>${esc(l.period)}</b><div style="margin-top:10px">${ballsHTML(l.red,l.blue)}</div><div class="muted" style="margin-top:10px">红球和值 ${sumOf(l)} · 奇偶比 ${oddCount(l)}:${6-oddCount(l)} · 大小比 ${bigCount(l)}:${6-bigCount(l)}</div>`;
+  } else $("#homeLatest").innerHTML = "暂无数据，请先导入开奖数据。";
+  const st = await dataLayer.stats(state.win);
+  const topN = (arr,n,rev)=>arr.map((v,i)=>({n:i+1,v})).sort((a,b)=>rev?b.v-a.v:a.v-b.v).slice(0,n);
+  $("#homeHot").innerHTML = topN(st.freq_red,5,true).map(x=>`<span class="mini-ball red">${String(x.n).padStart(2,"0")}</span><b class="muted" style="margin-right:6px">×${x.v}</b>`).join("");
+  $("#homeCold").innerHTML = topN(st.miss_red,5,true).map(x=>`<span class="mini-ball blue">${String(x.n).padStart(2,"0")}</span><b class="muted" style="margin-right:6px">${x.v}期</b>`).join("");
+  if(window.echarts) drawSumChart("homeSum", sm);
+}
+
+function viewData(){
+  return `${bannerHTML}
+  <div class="page-head">
+    <div><h1>数据</h1><p>粘贴文本或选择本地文件导入开奖历史；${state.online?"数据保存在 NAS 服务器数据库（SQLite）":"离线模式下保存在浏览器本地"}</p>${modeTag()}</div>
+    <div class="seg" id="winSeg">${[30,50,100,0].map(w=>`<button data-w="${w}" class="${state.win===w?"active":""}">${w===0?"全部":w+"期"}</button>`).join("")}</div>
+  </div>
+  <div class="grid g-2">
+    <div class="panel">
+      <h3><span class="dot"></span>导入开奖数据</h3>
+      <p class="muted" style="margin-bottom:4px"><code>2025091 02 08 14 19 25 33 07</code>（空格/逗号分隔）</p>
+      <p class="muted" style="margin-bottom:14px"><code>2025091,02,08,14,19,25,33,07</code>（CSV，一行一期）</p>
+      <textarea class="imp" id="impText" placeholder="粘贴开奖数据…&#10;2025091 02 08 14 19 25 33 07&#10;2025090 03 09 15 21 26 32 12"></textarea>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn blue" id="btnImport">导入并去重</button>
+        <button class="btn ghost" id="btnFile">选择 .txt / .csv 文件</button>
+        <input type="file" id="fileInput" accept=".txt,.csv,text/plain,text/csv" style="display:none">
+      </div>
+      <div id="impMsg" style="margin-top:10px"></div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot blue"></span>数据管理</h3>
+      <div class="row" style="margin-bottom:14px"><span class="pill warm" id="dataTotal">—</span><span class="pill cold" id="dataWin">—</span></div>
+      <p class="muted" style="margin-bottom:12px">「重置为演示数据」恢复内置示例；「清空」删除全部开奖数据。</p>
+      <div class="btn-row">
+        <button class="btn red" id="btnReset">重置为演示数据</button>
+        <button class="btn ghost" id="btnClear">清空数据</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px">
+    <h3><span class="dot"></span>历史开奖记录</h3>
+    <div class="tbl-wrap"><table class="list" style="min-width:640px">
+      <colgroup><col style="width:14%"><col style="width:46%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:10%"></colgroup>
+      <thead><tr><th>期号</th><th>红球</th><th>蓝球</th><th>和值</th><th>奇偶</th><th>大小</th></tr></thead>
+      <tbody id="historyBody"><tr><td colspan="6" class="muted">加载中…</td></tr></tbody>
+    </table></div>
+  </div>`;
+}
+async function loadData(){
+  const h = await dataLayer.history(state.win);
+  $("#dataTotal").textContent = `当前 ${h.total} 期`;
+  $("#dataWin").textContent = `窗口 ${h.win} 期`;
+  $("#historyBody").innerHTML = h.rows.map(d=>`
+    <tr><td>${esc(d.period)}</td>
+    <td>${d.red.map(n=>`<span class="mini-ball red">${String(n).padStart(2,"0")}</span>`).join("")}</td>
+    <td><span class="mini-ball blue">${String(d.blue).padStart(2,"0")}</span></td>
+    <td>${d.sum}</td><td>${d.odd}</td><td>${d.big}</td></tr>`).join("");
+}
+
+function viewStat(){
+  return `${bannerHTML}
+  <div class="page-head">
+    <div><h1>统计</h1><p id="statSub">按窗口统计频次与遗漏，条形越长越热/越冷</p>${modeTag()}</div>
+  </div>
+  <div class="panel"><h3><span class="dot"></span>红球频次 × 遗漏（1–33）</h3><div class="freq-grid" id="freqRed"></div></div>
+  <div class="panel" style="margin-top:16px"><h3><span class="dot blue"></span>蓝球频次 × 遗漏（1–16）</h3><div class="freq-grid" style="grid-template-columns:repeat(auto-fill,minmax(64px,1fr))" id="freqBlue"></div></div>
+  <div class="grid g-2" style="margin-top:16px">
+    <div class="panel"><h3><span class="dot amber"></span>奇偶比分布（红球）</h3><div id="oddDist" class="muted">加载中…</div></div>
+    <div class="panel"><h3><span class="dot amber"></span>大小比分布（红球，小≤16 / 大≥17）</h3><div id="bigDist" class="muted">加载中…</div></div>
+  </div>`;
+}
+async function loadStat(){
+  const st = await dataLayer.stats(state.win);
+  $("#statSub").textContent = `窗口：近 ${st.win} 期`;
+  const cell = (f, m, isBlue) => {
+    const maxF = Math.max(...f,1), maxM = Math.max(...m,1);
+    let h = "";
+    for(let i=0;i<f.length;i++){
+      const fv=f[i], mv=m[i], fw=fv/maxF;
+      const fc = isBlue?`rgba(62,139,255,${0.15+0.55*fw})`:`rgba(229,72,77,${0.15+0.55*fw})`;
+      h += `<div class="freq-cell bar"><div class="n">${String(i+1).padStart(2,"0")}</div><div class="c">${fv}次/漏${mv}</div><div class="bar-bg" style="background:${fc};width:${Math.max(12,fw*100)}%"></div></div>`;
+    }
+    return h;
+  };
+  $("#freqRed").innerHTML = cell(st.freq_red, st.miss_red, false);
+  $("#freqBlue").innerHTML = cell(st.freq_blue, st.miss_blue, true);
+  const h = await dataLayer.history(state.win);
+  const dist = arr => { const d={}; arr.forEach(x=>d[x]=(d[x]||0)+1); return Object.entries(d).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="pill warm" style="margin:0 6px 6px 0">${k} 比 ×${v}</span>`).join(""); };
+  $("#oddDist").innerHTML = dist(h.rows.map(r=>r.odd));
+  $("#bigDist").innerHTML = dist(h.rows.map(r=>r.big));
+}
+</script>
+<script>
+"use strict";
+/* =====================================================
+   走势视图 + 图表
+   ===================================================== */
+const CHART_COLORS = { red:"#E5484D", blue:"#3E8BFF", amber:"#F0A94A", txt:"#93A7C0", grid:"rgba(255,255,255,.07)" };
+const axisStyle = { axisLine:{lineStyle:{color:"#24466F"}}, axisLabel:{color:CHART_COLORS.txt, fontFamily:"var(--font-mono)"}, splitLine:{lineStyle:{color:CHART_COLORS.grid}} };
+const tipStyle = { backgroundColor:"#172F4B", borderColor:"#1E3A5F", textStyle:{color:"#E6EEF7"}, confine:true };
+function baseChart(id, option){
+  if(!window.echarts) return;
+  const el = document.getElementById(id);
+  if(!el) return;
+  const chart = echarts.getInstanceByDom(el) || echarts.init(el, null, {renderer:"canvas"});
+  chart.setOption(option, true);
+}
+function drawSumChart(id, sm){
+  if(!window.echarts || !document.getElementById(id)) return;
+  const p = sm.series.map(x=>x.period), v = sm.series.map(x=>x.sum);
+  baseChart(id, {
+    tooltip:{...tipStyle, trigger:"axis", formatter:q=>`${p[q[0].dataIndex]}<br/>和值 <b>${v[q[0].dataIndex]}</b>`},
+    grid:{left:40,right:14,top:20,bottom:28},
+    xAxis:{type:"category", data:p, ...axisStyle, axisLabel:{...axisStyle.axisLabel, interval:Math.max(0,Math.floor(p.length/10)-1)}},
+    yAxis:{type:"value", min:Math.max(21,Math.min(...v)-8), max:Math.max(...v)+8, ...axisStyle},
+    series:[{type:"line", data:v, smooth:true, symbol:"circle", symbolSize:5, lineStyle:{color:CHART_COLORS.red,width:2},
+      itemStyle:{color:CHART_COLORS.red},
+      areaStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(229,72,77,.28)"},{offset:1,color:"rgba(229,72,77,0)"}]}},
+      markLine:{silent:true,symbol:"none",lineStyle:{color:CHART_COLORS.amber,type:"dashed"},label:{color:CHART_COLORS.amber,fontSize:11,fontFamily:"var(--font-mono)"},data:[{yAxis:sm.avg,label:{formatter:"均值 "+sm.avg}}]}}]
+  });
+}
+function viewChart(){
+  return `${bannerHTML}
+  <div class="page-head"><div><h1>走势</h1><p>窗口：近 <span id="chartWin">—</span> 期 · 悬停读精确值</p>${modeTag()}</div></div>
+  <div class="panel"><h3><span class="dot"></span>红球和值走势</h3><div id="chartSum" class="chart-box"></div></div>
+  <div class="grid g-2" style="margin-top:16px">
+    <div class="panel"><h3><span class="dot"></span>红球出现频次（1–33）</h3><div id="chartFreqR" class="chart-box tall"></div></div>
+    <div class="panel"><h3><span class="dot blue"></span>蓝球出现频次（1–16）</h3><div id="chartFreqB" class="chart-box tall"></div></div>
+  </div>
+  <div class="panel" style="margin-top:16px"><h3><span class="dot amber"></span>红球当前遗漏 Top15</h3><div id="chartMiss" class="chart-box short"></div></div>`;
+}
+async function loadChart(){
+  const [sm, st] = await Promise.all([dataLayer.sums(state.win), dataLayer.stats(state.win)]);
+  $("#chartWin").textContent = sm.win;
+  drawSumChart("chartSum", sm);
+  baseChart("chartFreqR", { tooltip:{...tipStyle,trigger:"axis"}, grid:{left:40,right:14,top:24,bottom:26},
+    xAxis:{type:"category", data:[...Array(33)].map((_,i)=>String(i+1).padStart(2,"0")), ...axisStyle, axisLabel:{...axisStyle.axisLabel,interval:2}},
+    yAxis:{type:"value",min:0,...axisStyle},
+    series:[{type:"bar",data:st.freq_red,barWidth:"62%",itemStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"#FF7B7E"},{offset:1,color:"#B93236"}]}},
+      label:{show:true,position:"top",color:"#93A7C0",fontSize:10,fontFamily:"var(--font-mono)"}}]});
+  baseChart("chartFreqB", { tooltip:{...tipStyle,trigger:"axis"}, grid:{left:40,right:14,top:24,bottom:26},
+    xAxis:{type:"category", data:[...Array(16)].map((_,i)=>String(i+1).padStart(2,"0")), ...axisStyle},
+    yAxis:{type:"value",min:0,...axisStyle},
+    series:[{type:"bar",data:st.freq_blue,barWidth:"58%",itemStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"#6FB2FF"},{offset:1,color:"#2A66C2"}]}},
+      label:{show:true,position:"top",color:"#93A7C0",fontSize:10,fontFamily:"var(--font-mono)"}}]});
+  const missTop = st.miss_red.map((v,i)=>({n:i+1,v})).sort((a,b)=>b.v-a.v).slice(0,15).reverse();
+  baseChart("chartMiss", { tooltip:{...tipStyle,trigger:"axis",axisPointer:{type:"shadow"},formatter:q=>`<b>${String(q[0].name).padStart(2,"0")}</b> 遗漏 ${q[0].value} 期`},
+    grid:{left:40,right:44,top:10,bottom:24},
+    xAxis:{type:"value",min:0,...axisStyle},
+    yAxis:{type:"category",data:missTop.map(x=>String(x.n).padStart(2,"0")),...axisStyle,axisLabel:{color:CHART_COLORS.txt,fontFamily:"var(--font-mono)"}},
+    series:[{type:"bar",data:missTop.map(x=>x.v),barWidth:"55%",itemStyle:{color:{type:"linear",x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:"#F0A94A"},{offset:1,color:"#B97B28"}]}},
+      label:{show:true,position:"right",color:"#F7C87E",fontSize:11,fontFamily:"var(--font-mono)"}}]});
+}
+
+/* =====================================================
+   推荐视图 + 我的推荐 / 中奖核对
+   ===================================================== */
+function viewPick(){
+  return `${bannerHTML}
+  <div class="page-head"><div><h1>号码推荐</h1><p>基于历史统计的<strong>加权随机生成</strong>，仅为娱乐模拟</p>${modeTag()}</div></div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-bottom:16px">
+    ${Object.entries(STRATEGIES).map(([k,v])=>`<div class="strategy-card ${state.strategy===k?"selected":""}" data-str="${k}"><h4>${v.name}<span class="tag">${k}</span></h4><p>${v.desc}</p></div>`).join("")}
+  </div>
+  <div class="grid g-2">
+    <div class="panel">
+      <h3><span class="dot"></span>生成娱乐号码</h3>
+      <div class="row" style="justify-content:space-between;margin-bottom:14px">
+        <div class="seg" id="countSeg">${[1,3,5,10].map(c=>`<button data-c="${c}" class="${state.count===c?"active":""}">${c} 组</button>`).join("")}</div>
+        <div class="btn-row">
+          <button class="btn red" id="btnGen">生成</button>
+          <button class="btn blue" id="btnSave">保存这批推荐</button>
+        </div>
+      </div>
+      <div id="pickResult"><p class="muted" style="padding:12px 0">选择策略与组数，点击「生成」。</p></div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot green"></span>我的推荐 · 中奖核对</h3>
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn ghost" id="btnCheck">核对中奖</button>
+        <span class="muted">自动用「保存后最早的一期开奖」核对每组命中</span>
+      </div>
+      <div id="picksList"><p class="muted">加载中…</p></div>
+    </div>
+  </div>`;
+}
+let lastGen = [];
+async function loadPick(){
+  const picks = await dataLayer.listPicks();
+  renderPicks(picks);
+}
+function renderPicks(picks){
+  const box = $("#picksList");
+  if(!picks.length){ box.innerHTML = `<p class="muted">还没有保存过推荐。生成号码后点「保存这批推荐」，开奖导入后点「核对中奖」。</p>`; return; }
+  box.innerHTML = picks.map(p=>{
+    const checked = p.checked;
+    const wonCount = checked ? checked.results.filter(r=>r.won).length : 0;
+    const status = checked
+      ? `<span class="pill ${wonCount?"green":"gray"}">已核对 · ${checked.draw_period} · ${wonCount?("命中 "+wonCount+" 组"):"未中奖"}</span>`
+      : `<span class="pill warm">待开奖（基准 ${esc(p.base_period||"—")}）</span>`;
+    const detail = checked ? `
+      <div style="margin-top:10px">
+        <div class="row" style="gap:6px"><span class="muted">核对开奖 ${esc(checked.draw_period)}：</span>${ballsHTML(checked.draw.red, checked.draw.blue, true)}</div>
+        <div style="margin-top:10px">
+          ${checked.results.map((r,i)=>`
+            <div class="check-row">
+              <b class="muted" style="font-family:var(--font-mono)">${i+1}</b>
+              <span class="mini-ball red">${String(p.sets[i].red[0]).padStart(2,"0")}</span>
+              <span class="hit">红命中 ${r.hit_red}/6 · 蓝${r.hit_blue?"中":"未中"}</span>
+              ${levelPill(r.level, r.prize)}
+            </div>`).join("")}
+        </div>
+      </div>` : "";
+    return `<div class="pick-item">
+      <div class="row" style="justify-content:space-between">
+        <b style="font-size:14px">${STRATEGIES[p.strategy]?.name || p.strategy} · ${esc(p.created_at||"")}</b>
+        ${status}
+      </div>
+      <div class="meta">${p.sets.map(s=>ballsHTML(s.red,s.blue,true)).join("")}</div>
+      ${detail}
+      <div class="row" style="margin-top:10px;gap:8px">
+        <button class="btn ghost mini" data-del="${p.id}">删除</button>
+      </div>
+    </div>`;
+  }).join("");
+  $$("#picksList [data-del]").forEach(b=>b.addEventListener("click",async e=>{
+    e.stopPropagation();
+    await dataLayer.deletePick(Number(b.dataset.del));
+    renderPicks(await dataLayer.listPicks());
+    toast("已删除该条推荐");
+  }));
+}
+async function doGenerate(){
+  const res = await dataLayer.recommend(state.strategy, state.count, state.win);
+  lastGen = res.sets;
+  const box = $("#pickResult");
+  if(!lastGen.length){ box.innerHTML = `<p class="import-err">生成失败：数据不足，请先导入开奖数据。</p>`; return; }
+  box.innerHTML = lastGen.map((r,i)=>{
+    const o=oddCount(r), b=bigCount(r), s=sumOf(r);
+    return `<div class="pick-item">
+      <div class="row" style="justify-content:space-between"><b style="font-size:15px">第 ${i+1} 组 · ${STRATEGIES[state.strategy].name}</b><span class="pill warm">和值 ${s}</span></div>
+      <div style="margin-top:12px">${ballsHTML(r.red, r.blue)}</div>
+      <div class="meta"><span>奇偶 <b>${o}:${6-o}</b></span><span>大小 <b>${b}:${6-b}</b></span><span>蓝球 <b>${String(r.blue).padStart(2,"0")}</b></span><span style="margin-left:auto">随机模拟 · 不构成投注建议</span></div>
+    </div>`;
+  }).join("");
+  toast("已生成 " + lastGen.length + " 组娱乐号码 —— 开奖完全随机，仅供娱乐");
+}
+async function doSave(){
+  if(!lastGen.length){ toast("请先生成号码"); return; }
+  const ov = await dataLayer.overview(state.win);
+  const base = ov.latest ? ov.latest.period : "";
+  const r = await dataLayer.addPick(state.strategy, base, lastGen);
+  toast("已保存推荐（基准期 " + (base||"—") + "），开奖后记得核对");
+  renderPicks(await dataLayer.listPicks());
+}
+async function doCheck(){
+  const r = await dataLayer.checkPicks();
+  if(r.checked){ toast(`已核对 ${r.checked} 条推荐`); }
+  else toast("暂无可核对：保存时间之后还没有新的开奖数据");
+  renderPicks(await dataLayer.listPicks());
+}
+
+/* =====================================================
+   事件绑定 / 路由 / 初始化
+   ===================================================== */
+function bindEvents(){
+  $$("#winSeg button").forEach(b=>b.addEventListener("click",()=>{ state.win=Number(b.dataset.w); render(); }));
+  const impText=$("#impText");
+  $("#btnImport")?.addEventListener("click",async()=>{
+    const r = await dataLayer.importText(impText.value);
+    const m=$("#impMsg"); m.className = r.ok?"import-ok":"import-err"; m.textContent = r.msg;
+    if(r.ok){ impText.value=""; loadData(); }
+  });
+  $("#btnFile")?.addEventListener("click",()=>$("#fileInput").click());
+  $("#fileInput")?.addEventListener("change",e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=async()=>{
+      const r=await dataLayer.importText(String(rd.result));
+      const m=$("#impMsg"); m.className=r.ok?"import-ok":"import-err"; m.textContent=r.msg;
+      if(r.ok) loadData();
+    };
+    rd.readAsText(f,"utf-8"); e.target.value="";
+  });
+  $("#btnReset")?.addEventListener("click",async()=>{ await dataLayer.reset(); toast("已重置为内置演示数据"); render(); });
+  $("#btnClear")?.addEventListener("click",async()=>{ await dataLayer.clear(); toast("已清空开奖数据"); render(); });
+  $$(".strategy-card").forEach(c=>c.addEventListener("click",()=>{ state.strategy=c.dataset.str; $$(".strategy-card").forEach(x=>x.classList.toggle("selected",x===c)); }));
+  $$("#countSeg button").forEach(b=>b.addEventListener("click",()=>{ state.count=Number(b.dataset.c); $$("#countSeg button").forEach(x=>x.classList.toggle("active",x===b)); }));
+  $("#btnGen")?.addEventListener("click",doGenerate);
+  $("#btnSave")?.addEventListener("click",doSave);
+  $("#btnCheck")?.addEventListener("click",doCheck);
+}
+const VIEWS = { home:viewHome, data:viewData, stat:viewStat, chart:viewChart, pick:viewPick };
+const LOADERS = { home:loadHome, data:loadData, stat:loadStat, chart:loadChart, pick:loadPick };
+async function render(){
+  const hash = location.hash.replace("#/","") || "home";
+  const view = VIEWS[hash] ? hash : "home";
+  state.view = view;
+  $("#main").innerHTML = VIEWS[view]();
+  $$(".nav-item").forEach(a=>a.classList.toggle("active", a.dataset.view===view));
+  bindEvents();
+  await LOADERS[view]();
+}
+function toast(msg){
+  let el=$("#toast");
+  if(!el){ el=document.createElement("div"); el.id="toast"; el.style.cssText="position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:10px 18px;border-radius:10px;font-size:13px;z-index:99;box-shadow:0 8px 28px rgba(0,0,0,.4);max-width:88vw"; document.body.appendChild(el); }
+  el.textContent=msg; el.style.opacity="1";
+  clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.opacity="0"; },3000);
+}
+function loadECharts(){
+  const urls=[
+    "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"
+  ];
+  (function tryLoad(i){
+    if(i>=urls.length || window.echarts) return;
+    const sc=document.createElement("script");
+    sc.src=urls[i];
+    sc.onload=()=>{ render(); };
+    sc.onerror=()=>{ tryLoad(i+1); };
+    document.head.appendChild(sc);
+  })(0);
+}
+async function boot(){
+  try{ const r=await fetch("/api/overview"); if(r.ok){ state.online=true; } else state.online=false; }
+  catch(e){ state.online=false; }
+  window.addEventListener("hashchange", render);
+  await render();
+  loadECharts();
+}
+boot();
+</script>
+</body>
+</html>

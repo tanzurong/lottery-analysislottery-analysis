@@ -1,0 +1,15 @@
+# 双色球娱乐分析工作台 —— Docker Compose
+# 部署：docker compose up -d --build
+# 访问：http://NAS_IP:8056
+services:
+  lottery:
+    build: .
+    image: lottery-analysis:latest
+    container_name: lottery-analysis
+    ports:
+      - "8056:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
