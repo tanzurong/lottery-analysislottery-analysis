@@ -174,7 +174,10 @@ const RED_MAX = 33, BLUE_MAX = 16;
 const STRATEGIES = {
   hot:{name:"热号加权", desc:"按窗口出现频次做权重（频次越高越易被选中），适合观察「近期活跃号」的分布模拟。"},
   cold:{name:"冷号加权", desc:"按当前遗漏值做权重（遗漏越久越易被选中），适合观察「长期未出号」的回补模拟。"},
-  mix:{name:"均衡组合", desc:"热冷各半 + 奇偶 3:3 附近 + 大小均衡 + 和值 60–140 约束，模拟「机选套餐」风格。"}
+  mix:{name:"均衡组合", desc:"热冷各半 + 奇偶 3:3 附近 + 大小均衡 + 和值 60–140 约束，模拟「机选套餐」风格。"},
+  multi:{name:"多因子精选", desc:"热度0.35 + 遗漏回补0.25 + 近10期动量0.20 综合加权，并经和值/奇偶/大小/AC值四重过滤，比单一权重更有章法。"},
+  pair:{name:"搭档精选", desc:"在多因子评分基础上，组合偏好历史共现提升度高的红球搭档对（详见统计页「热搭档」）。"},
+  wheel:{name:"胆拖缩水", desc:"自己圈 8~12 个胆码 + 1 蓝，用覆盖设计生成最少注单，保证胆码中 5 红时至少一注中 5 红。"}
 };
 const PRIZE_TABLE = [
   [6,1,"一等奖",null],[6,0,"二等奖",null],[5,1,"三等奖",3000],[5,0,"四等奖",200],
@@ -365,6 +368,14 @@ const dataLayer = {
   async syncNow(){
     if(!state.online) throw new Error("离线模式不支持网络同步，请连接后端服务");
     return apiFetch("/api/sync",{method:"POST"});
+  },
+  async pairs(win){
+    if(!state.online) return {top:[]};
+    return apiFetch(`/api/pairs?win=${win||""}`);
+  },
+  async wheel(reds, blue){
+    if(!state.online) throw new Error("离线模式不支持胆拖缩水，请连接后端服务");
+    return apiFetch("/api/wheel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reds,blue})});
   }
 };
 
@@ -505,7 +516,8 @@ function viewStat(){
   <div class="grid g-2" style="margin-top:16px">
     <div class="panel"><h3><span class="dot amber"></span>奇偶比分布（红球）</h3><div id="oddDist" class="muted">加载中…</div></div>
     <div class="panel"><h3><span class="dot amber"></span>大小比分布（红球，小≤16 / 大≥17）</h3><div id="bigDist" class="muted">加载中…</div></div>
-  </div>`;
+  </div>
+  <div class="panel" style="margin-top:16px"><h3><span class="dot"></span>红球热搭档 Top10（共现提升度）</h3><div id="pairBox" class="muted">加载中…</div><p class="muted" style="margin-top:8px;font-size:12px">提升度 lift &gt;1 表示这对号码历史共现频率高于随机期望，仅供娱乐观察。</p></div>`;
 }
 async function loadStat(){
   const st = await dataLayer.stats(state.win);
@@ -588,6 +600,16 @@ async function loadChart(){
     yAxis:{type:"category",data:missTop.map(x=>String(x.n).padStart(2,"0")),...axisStyle,axisLabel:{color:CHART_COLORS.txt,fontFamily:"var(--font-mono)"}},
     series:[{type:"bar",data:missTop.map(x=>x.v),barWidth:"55%",itemStyle:{color:{type:"linear",x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:"#F0A94A"},{offset:1,color:"#B97B28"}]}},
       label:{show:true,position:"right",color:"#F7C87E",fontSize:11,fontFamily:"var(--font-mono)"}}]});
+  // 热搭档
+  try{
+    const pr = await dataLayer.pairs(state.win);
+    $("#pairBox").innerHTML = (pr.top||[]).map(p=>`
+      <div class="check-row">
+        <span class="mini-ball red">${String(p.a).padStart(2,"0")}</span>
+        <span class="mini-ball red">${String(p.b).padStart(2,"0")}</span>
+        <span class="muted">同出 ${p.count} 次 · lift ${p.lift}</span>
+      </div>`).join("") || "暂无可展示搭档。";
+  }catch(e){ $("#pairBox").textContent = "搭档数据加载失败。"; }
 }
 
 /* =====================================================
@@ -598,6 +620,15 @@ function viewPick(){
   <div class="page-head"><div><h1>号码推荐</h1><p>基于历史统计的<strong>加权随机生成</strong>，仅为娱乐模拟</p>${modeTag()}</div></div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-bottom:16px">
     ${Object.entries(STRATEGIES).map(([k,v])=>`<div class="strategy-card ${state.strategy===k?"selected":""}" data-str="${k}"><h4>${v.name}<span class="tag">${k}</span></h4><p>${v.desc}</p></div>`).join("")}
+  </div>
+  <div class="panel" style="margin-bottom:16px">
+    <h3><span class="dot red"></span>胆拖缩水（旋转矩阵）</h3>
+    <p class="muted" style="margin-bottom:10px">自己圈 <b>8~12 个</b> 看好的红球 + 选 1 个蓝球，系统用覆盖设计生成最少注单，保证「胆码中 5 红时至少一注中 5 红」。</p>
+    <div class="row" style="margin-bottom:10px"><span class="muted">已选红球：<b id="wheelPicks">0 / 8~12</b></span></div>
+    <div class="freq-grid" style="grid-template-columns:repeat(auto-fill,minmax(48px,1fr));margin-bottom:12px" id="wheelRedGrid"></div>
+    <div class="row" style="margin-bottom:12px"><span class="muted" style="margin-right:8px">蓝球：</span><div class="freq-grid" style="grid-template-columns:repeat(auto-fill,minmax(44px,1fr));flex:1" id="wheelBlueGrid"></div></div>
+    <div class="row"><button class="btn red" id="btnWheel">生成缩水注单</button><button class="btn ghost" id="btnWheelClear">清空重选</button></div>
+    <div id="wheelResult" style="margin-top:12px"></div>
   </div>
   <div class="grid g-2">
     <div class="panel">
@@ -739,6 +770,41 @@ function bindEvents(){
   $("#btnGen")?.addEventListener("click",doGenerate);
   $("#btnSave")?.addEventListener("click",doSave);
   $("#btnCheck")?.addEventListener("click",doCheck);
+  // ---- 胆拖缩水 ----
+  wheelState = { reds:new Set(), blue:null };
+  renderWheelGrids();
+  $("#btnWheel")?.addEventListener("click",doWheel);
+  $("#btnWheelClear")?.addEventListener("click",()=>{ wheelState={reds:new Set(),blue:null}; renderWheelGrids(); $("#wheelResult").innerHTML=""; });
+}
+let wheelState = { reds:new Set(), blue:null };
+function renderWheelGrids(){
+  const rp=$("#wheelPicks"), rg=$("#wheelRedGrid"), bg=$("#wheelBlueGrid");
+  if(!rp||!rg||!bg) return;
+  rp.textContent = `${wheelState.reds.size} / 8~12`;
+  rg.innerHTML = Array.from({length:33},(_,i)=>i+1).map(n=>`<div class="freq-cell" data-wred="${n}" style="cursor:pointer;${wheelState.reds.has(n)?"border-color:var(--red);color:var(--red);background:rgba(240,80,90,.12)":""}"><b>${String(n).padStart(2,"0")}</b></div>`).join("");
+  bg.innerHTML = Array.from({length:16},(_,i)=>i+1).map(n=>`<div class="freq-cell" data-wblue="${n}" style="cursor:pointer;${wheelState.blue===n?"border-color:var(--blue);color:var(--blue);background:rgba(62,139,255,.12)":""}"><b>${String(n).padStart(2,"0")}</b></div>`).join("");
+  $$("#wheelRedGrid [data-wred]").forEach(c=>c.addEventListener("click",()=>{ const n=Number(c.dataset.wred); wheelState.reds.has(n)?wheelState.reds.delete(n):wheelState.reds.add(n); renderWheelGrids(); }));
+  $$("#wheelBlueGrid [data-wblue]").forEach(c=>c.addEventListener("click",()=>{ wheelState.blue=Number(c.dataset.wblue); renderWheelGrids(); }));
+}
+async function doWheel(){
+  const box=$("#wheelResult");
+  if(wheelState.reds.size<8||wheelState.reds.size>12){ box.innerHTML=`<p class="import-err">请先点选 8~12 个红球（当前已选 ${wheelState.reds.size} 个）。</p>`; return; }
+  if(!wheelState.blue){ box.innerHTML=`<p class="import-err">请再点选 1 个蓝球。</p>`; return; }
+  box.innerHTML=`<p class="muted">生成中…</p>`;
+  try{
+    const r=await dataLayer.wheel([...wheelState.reds].sort((a,b)=>a-b), wheelState.blue);
+    if(!r.ok){ box.innerHTML=`<p class="import-err">${esc(r.msg||"生成失败")}</p>`; return; }
+    box.innerHTML = `<div class="import-ok" style="margin-bottom:10px">${esc(r.note)}</div>`
+      + r.sets.map((s,i)=>`<div class="check-row"><b class="muted" style="font-family:var(--font-mono)">${String(i+1).padStart(2,"0")}</b>${ballsHTML(s.red,s.blue,true)}</div>`).join("")
+      + `<div class="row" style="margin-top:12px"><button class="btn blue" id="btnWheelSave">保存这批胆拖</button><span class="muted">保存后将自动参与每日中奖核对</span></div>`;
+    $$("#btnWheelSave").forEach(b=>b.addEventListener("click",async()=>{
+      const ov = await dataLayer.overview(state.win);
+      const base = ov.latest ? ov.latest.period : "";
+      const rr = await dataLayer.addPick("wheel", base, r.sets);
+      toast("已保存胆拖（基准期 " + (base||"—") + "）");
+      renderPicks(await dataLayer.listPicks());
+    }));
+  }catch(e){ box.innerHTML=`<p class="import-err">${esc(e.message)}</p>`; }
 }
 const VIEWS = { home:viewHome, data:viewData, stat:viewStat, chart:viewChart, pick:viewPick };
 const LOADERS = { home:loadHome, data:loadData, stat:loadStat, chart:loadChart, pick:loadPick };

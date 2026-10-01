@@ -112,12 +112,38 @@ def api_sums():
 def api_recommend():
     body = request.get_json(silent=True) or {}
     strategy = body.get("strategy", "hot")
-    if strategy not in ("hot", "cold", "mix"):
+    if strategy not in ("hot", "cold", "mix", "multi", "pair"):
         strategy = "hot"
     count = max(1, min(20, int(body.get("count", 5))))
     win = int(body.get("win") or 0) or 100
     sets = analysis.recommend(records(), win, strategy, count)
     return jsonify({"sets": sets, "strategy": strategy})
+
+
+@app.get("/api/pairs")
+def api_pairs():
+    """热搭档 Top10（共现提升度）。"""
+    win = int(request.args.get("win") or 0) or 100
+    w = analysis.window(records(), win)
+    return jsonify({"top": analysis.top_pairs(w, 10)})
+
+
+@app.post("/api/wheel")
+def api_wheel():
+    """胆拖旋转矩阵：用户选 8~12 个红球，生成覆盖注单。"""
+    body = request.get_json(silent=True) or {}
+    try:
+        reds = [int(x) for x in body.get("reds", [])]
+        blue = int(body.get("blue", 0))
+        if not (1 <= blue <= 16):
+            return jsonify({"ok": False, "msg": "请选择 1 个蓝球（1-16）。"}), 400
+        result = analysis.wheel_cover(reds, 5)
+        sets = [{"red": list(b), "blue": blue} for b in result["bets"]]
+        return jsonify({"ok": True, "sets": sets, "count": result["count"], "note": result["note"]})
+    except ValueError as e:
+        return jsonify({"ok": False, "msg": str(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "msg": f"生成失败：{e}"}), 500
 
 
 # ---------- 我的推荐 / 中奖核对 ----------
